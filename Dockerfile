@@ -23,7 +23,6 @@ ENV NODE_ENV=production \
     N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \
     PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
     N8N_RELEASE_TYPE=stable \
-    N8N_CUSTOM_EXTENSIONS=/opt/n8n/custom/nodes \
     NODE_PATH=/usr/local/lib/node_modules/n8n/node_modules
 
 USER root
@@ -37,15 +36,15 @@ RUN apt-get update && \
     npm rebuild --prefix /usr/local/lib/node_modules/n8n sqlite3 && \
     npm rebuild --prefix /usr/local/lib/node_modules/n8n isolated-vm && \
     useradd --create-home --shell /bin/bash node && \
-    mkdir -p /home/node/.n8n /opt/n8n/custom/nodes
+    mkdir -p /home/node/.n8n /opt/n8n/community
 
-WORKDIR /opt/n8n/custom/nodes
+WORKDIR /tmp
 
-COPY --from=builder /build/*.tgz /tmp/n8n-nodes-playwright.tgz
+COPY --from=builder /build/*.tgz /opt/n8n/community/n8n-nodes-playwright.tgz
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 
-RUN npm install --omit=dev --ignore-scripts /tmp/n8n-nodes-playwright.tgz && \
-    rm /tmp/n8n-nodes-playwright.tgz && \
-    chown -R node:node /home/node /opt/n8n
+RUN chmod +x /docker-entrypoint.sh && \
+    chown -R node:node /home/node /opt/n8n /docker-entrypoint.sh
 
 USER node
 
@@ -53,4 +52,5 @@ WORKDIR /home/node/.n8n
 
 EXPOSE 5678
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["n8n"]
