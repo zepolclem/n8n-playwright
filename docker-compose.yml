@@ -1,12 +1,37 @@
 services:
+  postgres:
+    image: postgres:16
+    container_name: n8n-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_NAME}
+      POSTGRES_USER: ${POSTGRES_DB_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_DB_PASSWORD}
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_DB_USER} -d ${POSTGRES_DB_NAME}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
   n8n:
     build: .
     container_name: n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-      DB_SQLITE_POOL_SIZE: '2'
-      N8N_RUNNERS_ENABLED: 'true'
-      N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false'
-      N8N_GIT_NODE_DISABLE_BARE_REPOS: 'true'
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: ${N8N_DB_POSTGRES_HOST}
+      DB_POSTGRESDB_PORT: '${N8N_DB_POSTGRES_PORT}'
+      DB_POSTGRESDB_DATABASE: ${POSTGRES_DB_NAME}
+      DB_POSTGRESDB_USER: ${POSTGRES_DB_USER}
+      DB_POSTGRESDB_PASSWORD: ${POSTGRES_DB_PASSWORD}
+      DB_POSTGRESDB_SCHEMA: ${N8N_DB_POSTGRES_SCHEMA}
+      N8N_RUNNERS_ENABLED: '${N8N_RUNNERS_ENABLED}'
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: '${N8N_BLOCK_ENV_ACCESS_IN_NODE}'
+      N8N_GIT_NODE_DISABLE_BARE_REPOS: '${N8N_GIT_NODE_DISABLE_BARE_REPOS}'
     ports:
       - '5678:5678'
     volumes:
@@ -16,3 +41,5 @@ services:
 volumes:
   n8n_data:
     name: n8n_data
+  postgres_data:
+    name: n8n_postgres_data

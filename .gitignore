@@ -13,3 +13,4 @@ nodes/browsers/*
 *.tgz
 .devcontainer
 ai_files
+.env
