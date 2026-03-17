@@ -30,7 +30,7 @@ USER root
 COPY --from=n8n /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends python3-venv && \
+    apt-get install -y --no-install-recommends python3-venv build-essential && \
     rm -rf /var/lib/apt/lists/* && \
     ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     npm rebuild --prefix /usr/local/lib/node_modules/n8n sqlite3 && \
