@@ -29,13 +29,27 @@ services:
       DB_POSTGRESDB_USER: ${POSTGRES_DB_USER}
       DB_POSTGRESDB_PASSWORD: ${POSTGRES_DB_PASSWORD}
       DB_POSTGRESDB_SCHEMA: ${N8N_DB_POSTGRES_SCHEMA}
-      N8N_RUNNERS_ENABLED: '${N8N_RUNNERS_ENABLED}'
       N8N_BLOCK_ENV_ACCESS_IN_NODE: '${N8N_BLOCK_ENV_ACCESS_IN_NODE}'
+      N8N_RUNNERS_MODE: ${N8N_RUNNERS_MODE}
+      N8N_RUNNERS_BROKER_LISTEN_ADDRESS: ${N8N_RUNNERS_BROKER_LISTEN_ADDRESS}
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN}
       N8N_GIT_NODE_DISABLE_BARE_REPOS: '${N8N_GIT_NODE_DISABLE_BARE_REPOS}'
+      N8N_PYTHON_ENABLED: '${N8N_PYTHON_ENABLED}'
+      N8N_MIGRATE_FS_STORAGE_PATH: '${N8N_MIGRATE_FS_STORAGE_PATH}'
     ports:
       - '5678:5678'
     volumes:
       - n8n_data:/home/node/.n8n
+    restart: unless-stopped
+
+  runners:
+    image: n8nio/runners:2.12.2
+    container_name: n8n-runners
+    depends_on:
+      - n8n
+    environment:
+      N8N_RUNNERS_TASK_BROKER_URI: http://n8n:5679
+      N8N_RUNNERS_AUTH_TOKEN: ${N8N_RUNNERS_AUTH_TOKEN}
     restart: unless-stopped
 
 volumes:
