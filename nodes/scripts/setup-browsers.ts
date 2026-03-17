@@ -1,15 +1,21 @@
 import { mkdirSync, existsSync, readdirSync, rmSync, cpSync } from 'fs';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { execSync } from 'child_process';
 import { platform, homedir } from 'os';
 import { BrowserType } from '../playwright/config';
 
 function getPlaywrightCliCommand(): string {
-	const playwrightCliPath = require.resolve('playwright/cli');
+	const playwrightPackagePath = require.resolve('playwright/package.json');
+	const playwrightCliPath = join(dirname(playwrightPackagePath), 'cli.js');
 	return `"${process.execPath}" "${playwrightCliPath}"`;
 }
 
 function getPlaywrightCachePath(): string {
+	const configuredPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+	if (configuredPath && configuredPath !== '0') {
+		return configuredPath;
+	}
+
 	const os = platform();
 
 	if (os === 'win32') {

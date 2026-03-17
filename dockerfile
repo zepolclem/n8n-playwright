@@ -1,13 +1,11 @@
-FROM mcr.microsoft.com/playwright:v1.49.0-noble AS builder
+FROM mcr.microsoft.com/playwright:v1.58.2-noble AS builder
 
 ARG PNPM_VERSION=9.1.4
 
 WORKDIR /build
 
 RUN corepack enable && \
-    corepack prepare pnpm@${PNPM_VERSION} --activate && \
-    mkdir -p /root/.cache && \
-    ln -s /ms-playwright /root/.cache/ms-playwright
+    corepack prepare pnpm@${PNPM_VERSION} --activate
 
 COPY package.json pnpm-lock.yaml tsconfig.json gulpfile.js index.js ./
 COPY nodes ./nodes
@@ -17,17 +15,22 @@ RUN pnpm install --frozen-lockfile --ignore-scripts && \
     pnpm run setup && \
     npm pack
 
-FROM mcr.microsoft.com/playwright:v1.49.0-noble
+FROM n8nio/n8n:1.123.25 AS n8n
 
-ARG N8N_VERSION=1.79.3
+FROM mcr.microsoft.com/playwright:v1.58.2-noble
 
 ENV NODE_ENV=production \
     N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true \
-    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 \
+    N8N_RELEASE_TYPE=stable \
+    NODE_PATH=/usr/local/lib/node_modules/n8n/node_modules
 
 USER root
 
-RUN npm install -g n8n@${N8N_VERSION} && \
+COPY --from=n8n /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
+
+RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+    npm rebuild --prefix /usr/local/lib/node_modules/n8n sqlite3 && \
     useradd --create-home --shell /bin/bash node && \
     mkdir -p /home/node/.n8n/nodes
 
@@ -45,4 +48,4 @@ WORKDIR /home/node/.n8n
 
 EXPOSE 5678
 
-CMD ["n8n", "start"]
+CMD ["n8n"]
