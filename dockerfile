@@ -15,7 +15,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts && \
     pnpm run setup && \
     npm pack
 
-FROM n8nio/n8n:1.123.25 AS n8n
+FROM n8nio/n8n:2.12.2 AS n8n
 
 FROM mcr.microsoft.com/playwright:v1.58.2-noble
 
@@ -29,8 +29,12 @@ USER root
 
 COPY --from=n8n /usr/local/lib/node_modules/n8n /usr/local/lib/node_modules/n8n
 
-RUN ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3-venv && \
+    rm -rf /var/lib/apt/lists/* && \
+    ln -s /usr/local/lib/node_modules/n8n/bin/n8n /usr/local/bin/n8n && \
     npm rebuild --prefix /usr/local/lib/node_modules/n8n sqlite3 && \
+    npm rebuild --prefix /usr/local/lib/node_modules/n8n isolated-vm && \
     useradd --create-home --shell /bin/bash node && \
     mkdir -p /home/node/.n8n/nodes
 
