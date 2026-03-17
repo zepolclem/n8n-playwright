@@ -1,10 +1,21 @@
 import { mkdirSync, existsSync, readdirSync, rmSync, cpSync } from 'fs';
-import { join } from 'path';
+import { dirname, join } from 'path';
 import { execSync } from 'child_process';
 import { platform, homedir } from 'os';
 import { BrowserType } from '../playwright/config';
 
+function getPlaywrightCliCommand(): string {
+	const playwrightPackagePath = require.resolve('playwright/package.json');
+	const playwrightCliPath = join(dirname(playwrightPackagePath), 'cli.js');
+	return `"${process.execPath}" "${playwrightCliPath}"`;
+}
+
 function getPlaywrightCachePath(): string {
+	const configuredPath = process.env.PLAYWRIGHT_BROWSERS_PATH;
+	if (configuredPath && configuredPath !== '0') {
+		return configuredPath;
+	}
+
 	const os = platform();
 
 	if (os === 'win32') {
@@ -20,7 +31,7 @@ function getPlaywrightCachePath(): string {
 
 function checkAndInstallLinuxDependencies(): boolean {
 	const os = platform();
-	
+
 	// Only run on Linux
 	if (os !== 'linux') {
 		return true;
@@ -31,18 +42,18 @@ function checkAndInstallLinuxDependencies(): boolean {
 	try {
 		// Check if we have sudo access
 		const hasRoot = process.getuid && process.getuid() === 0;
-		
+
 		if (!hasRoot) {
 			console.log('⚠️  Not running as root. Attempting to install dependencies with sudo...');
 		}
 
 		// Try to use Playwright's built-in dependency installer
 		console.log('Installing Playwright system dependencies...');
-		
+
 		try {
-			execSync('npx playwright install-deps chromium', { 
+			execSync(`${getPlaywrightCliCommand()} install-deps chromium`, {
 				stdio: 'inherit',
-				encoding: 'utf-8'
+				encoding: 'utf-8',
 			});
 			console.log('✅ System dependencies installed successfully!');
 			return true;
@@ -56,7 +67,7 @@ function checkAndInstallLinuxDependencies(): boolean {
 			console.log('    libasound2 libatspi2.0-0 libnspr4 libnss3 \\');
 			console.log('    libxshmfence1 libglib2.0-0 fonts-liberation');
 			console.log('\nOr run: npx playwright install-deps chromium\n');
-			
+
 			// Don't fail the installation, just warn
 			return false;
 		}
@@ -68,7 +79,7 @@ function checkAndInstallLinuxDependencies(): boolean {
 
 function verifyLinuxDependencies(): void {
 	const os = platform();
-	
+
 	if (os !== 'linux') {
 		return;
 	}
@@ -80,7 +91,7 @@ function verifyLinuxDependencies(): void {
 		'libatk-bridge-2.0.so.0',
 		'libcups.so.2',
 		'libnss3.so',
-		'libgbm.so.1'
+		'libgbm.so.1',
 	];
 
 	const missingLibs: string[] = [];
@@ -88,9 +99,9 @@ function verifyLinuxDependencies(): void {
 	for (const lib of requiredLibs) {
 		try {
 			// Try to locate the library
-			execSync(`ldconfig -p | grep ${lib}`, { 
+			execSync(`ldconfig -p | grep ${lib}`, {
 				stdio: 'pipe',
-				encoding: 'utf-8' 
+				encoding: 'utf-8',
 			});
 		} catch (error) {
 			missingLibs.push(lib);
@@ -99,7 +110,9 @@ function verifyLinuxDependencies(): void {
 
 	if (missingLibs.length > 0) {
 		console.log('⚠️  Missing system libraries detected:');
-		missingLibs.forEach(lib => console.log(`   - ${lib}`));
+		missingLibs.forEach((lib) => {
+			console.log(`   - ${lib}`);
+		});
 		console.log('\n⚠️  Chromium may fail to launch. Run the following command:');
 		console.log('   npx playwright install-deps chromium\n');
 	} else {
@@ -130,11 +143,13 @@ async function setupBrowsers() {
 		// 4. Check if source exists
 		if (!existsSync(sourcePath)) {
 			console.log('\nSource path does not exist. Installing Playwright browsers...');
-			execSync('npx --yes playwright install', { stdio: 'inherit' });
+			execSync(`${getPlaywrightCliCommand()} install`, { stdio: 'inherit' });
 
 			// Verify installation succeeded
 			if (!existsSync(sourcePath)) {
-				throw new Error(`Failed to install browsers. Expected path ${sourcePath} does not exist after installation.`);
+				throw new Error(
+					`Failed to install browsers. Expected path ${sourcePath} does not exist after installation.`,
+				);
 			}
 		}
 
@@ -154,10 +169,11 @@ async function setupBrowsers() {
 
 		for (const file of files) {
 			// Only copy browser directories we need
-			if (file.startsWith('chromium-') ||
+			if (
+				file.startsWith('chromium-') ||
 				file.startsWith('firefox-') ||
-				file.startsWith('webkit-')) {
-
+				file.startsWith('webkit-')
+			) {
 				const sourceFull = join(sourcePath, file);
 				const destFull = join(browsersPath, file);
 
@@ -178,7 +194,7 @@ async function setupBrowsers() {
 		// 9. Verify each browser executable
 		const browsers: BrowserType[] = ['chromium', 'firefox', 'webkit'];
 		for (const browserType of browsers) {
-			const browserDir = installedFiles.find(f => f.startsWith(browserType));
+			const browserDir = installedFiles.find((f) => f.startsWith(browserType));
 
 			if (!browserDir) {
 				console.log(`\nBrowser ${browserType} not found, installing...`);
@@ -206,21 +222,22 @@ export async function installBrowser(browserType: BrowserType) {
 		// Set the browsers path for Playwright
 		const env = {
 			...process.env,
-			PLAYWRIGHT_BROWSERS_PATH: browsersPath
+			PLAYWRIGHT_BROWSERS_PATH: browsersPath,
 		};
 
-		execSync(`npx --yes playwright install ${browserType}`, {
+		execSync(`${getPlaywrightCliCommand()} install ${browserType}`, {
 			stdio: 'inherit',
-			env
+			env,
 		});
 	} catch (error) {
 		console.error(`Failed to install ${browserType}:`, error);
 	}
 }
 
-// Run the setup
-console.log('Starting browser setup...\n');
-setupBrowsers().catch(error => {
-	console.error('Unhandled error:', error);
-	process.exit(1);
-});
+if (require.main === module) {
+	console.log('Starting browser setup...\n');
+	setupBrowsers().catch((error) => {
+		console.error('Unhandled error:', error);
+		process.exit(1);
+	});
+}
