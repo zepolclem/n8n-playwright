@@ -16,7 +16,9 @@ services:
     restart: unless-stopped
 
   n8n:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: n8n
     depends_on:
       postgres:
