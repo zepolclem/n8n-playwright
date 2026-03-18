@@ -5,6 +5,7 @@ This is an n8n community node. It lets you automate browser actions using Playwr
 [n8n](https://n8n.io/) is a [fair-code licensed](https://docs.n8n.io/reference/license/) workflow automation platform.
 
 [Installation](#installation)  
+[Docker Deployment](#docker-deployment)  
 [Operations](#operations)  
 [Custom Scripts](#custom-scripts)  
 [Compatibility](#compatibility)  
@@ -26,6 +27,25 @@ If you need to manually trigger the browser setup:
 ```bash
 pnpm rebuild n8n-nodes-playwright
 ```
+
+## Docker Deployment
+
+This repository also includes a `Dockerfile`, `docker-compose.yml`, and an entrypoint script for running n8n with PostgreSQL and the Playwright community node prepackaged.
+
+Start the stack with:
+
+```bash
+docker compose up --build
+```
+
+How the packaged node is loaded in Docker:
+
+- The image build produces a tarball for `n8n-nodes-playwright`
+- The tarball is copied into `/opt/n8n/community/n8n-nodes-playwright.tgz`
+- On container startup, `docker-entrypoint.sh` installs the package into `/home/node/.n8n/nodes`
+- The installed node lives in the persisted `n8n_data` volume, so it remains available across restarts
+
+If you rebuild the image with a newer version of this package and want the container to reinstall it, remove the existing package from the `n8n_data` volume or recreate that volume before starting n8n again.
 
 ## Operations
 
@@ -498,6 +518,14 @@ rmdir /s /q %USERPROFILE%\AppData\Local\ms-playwright
 ```bash
 pnpm rebuild n8n-nodes-playwright
 ```
+
+### Docker Node Not Showing Up
+
+If the Docker container starts but the Playwright node does not appear in n8n:
+
+1. Confirm the `n8n` service was started from this repository's `docker-compose.yml`
+2. Check the container logs for the entrypoint message that installs `n8n-nodes-playwright`
+3. If the `n8n_data` volume already contains an older install, remove `/home/node/.n8n/nodes/node_modules/n8n-nodes-playwright` from that volume or recreate the volume and restart the stack
 
 ### Custom Script Errors
 
