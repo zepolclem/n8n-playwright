@@ -36,15 +36,15 @@ RUN apt-get update && \
     npm rebuild --prefix /usr/local/lib/node_modules/n8n sqlite3 && \
     npm rebuild --prefix /usr/local/lib/node_modules/n8n isolated-vm && \
     useradd --create-home --shell /bin/bash node && \
-    mkdir -p /home/node/.n8n/nodes
+    mkdir -p /home/node/.n8n /opt/n8n/community
 
-WORKDIR /home/node/.n8n/nodes
+WORKDIR /tmp
 
-COPY --from=builder /build/*.tgz /tmp/n8n-nodes-playwright.tgz
+COPY --from=builder /build/*.tgz /opt/n8n/community/n8n-nodes-playwright.tgz
+COPY docker-entrypoint.sh /docker-entrypoint.sh
 
-RUN npm install --omit=dev --ignore-scripts /tmp/n8n-nodes-playwright.tgz && \
-    rm /tmp/n8n-nodes-playwright.tgz && \
-    chown -R node:node /home/node
+RUN chmod +x /docker-entrypoint.sh && \
+    chown -R node:node /home/node /opt/n8n /docker-entrypoint.sh
 
 USER node
 
@@ -52,4 +52,5 @@ WORKDIR /home/node/.n8n
 
 EXPOSE 5678
 
+ENTRYPOINT ["/docker-entrypoint.sh"]
 CMD ["n8n"]
